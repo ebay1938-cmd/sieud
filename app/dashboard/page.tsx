@@ -12,128 +12,114 @@ type Location = {
   title: string
 }
 
-type KeywordPosition = {
-  keyword: string
-  position: number | ""
-}
-
-type ManualStats = {
-  removedNegative: number
-  currentNegative: number
-  repliesAdded: number
-  campaignReviews: {
-    m0: number
-    m1: number
-    m2: number
-  }
-  keywordsMain: KeywordPosition[]
-  keywordsSecondary: KeywordPosition[]
-  plan: {
-    date: string
-    text: string
-  }
-  lastChanges: string
-}
-
-/* =======================
-   DEFAULT (ANTY-CRASH)
-======================= */
-
-const EMPTY_MANUAL: ManualStats = {
-  removedNegative: 0,
-  currentNegative: 0,
-  repliesAdded: 0,
-  campaignReviews: { m0: 0, m1: 0, m2: 0 },
-  keywordsMain: [
-    { keyword: "", position: "" },
-    { keyword: "", position: "" },
-    { keyword: "", position: "" }
-  ],
-  keywordsSecondary: [
-    { keyword: "", position: "" },
-    { keyword: "", position: "" },
-    { keyword: "", position: "" }
-  ],
-  plan: { date: "", text: "" },
-  lastChanges: ""
-}
-
 /* =======================
    KOMPONENT
 ======================= */
 
 export default function Dashboard() {
   const [locations, setLocations] = useState<Location[]>([])
-  const [manual, setManual] = useState<Record<string, ManualStats>>({})
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  /* ===== LOAD ===== */
-  useEffect(() => {
-    fetch("/api/wizytowki")
-      .then(res => res.json())
-      .then(data => {
-        setLocations(data.locations || [])
-        setLoading(false)
-      })
+  /* ===== LOAD LOCATIONS ===== */
+  const loadLocations = async () => {
+    setError(null)
+    setLoading(true)
 
-    const saved = localStorage.getItem("manualStats")
-    if (saved) {
-      try {
-        setManual(JSON.parse(saved))
-      } catch {}
+    try {
+      const res = await fetch("/api/wizytowki", { cache: "no-store" })
+      if (!res.ok) throw new Error("Fetch failed")
+
+      const data = await res.json()
+      setLocations(data.locations || [])
+    } catch {
+      setError("Nie udało się pobrać wizytówek")
+    } finally {
+      setLoading(false)
     }
-  }, [])
+  }
 
-  /* ===== SAVE ===== */
+  /* ===== REFRESH SNAPSHOTS (ALL) ===== */
+  const refreshAll = async () => {
+    setRefreshing(true)
+    setError(null)
+
+    try {
+      for (const loc of locations) {
+        const id = loc.name.split("/").pop()
+        if (!id) continue
+
+        const res = await fetch(`/api/refresh?id=${id}`, {
+          method: "POST"
+        })
+
+        if (!res.ok) {
+          throw new Error(`Refresh failed for ${id}`)
+        }
+      }
+    } catch {
+      setError("Błąd podczas odświeżania danych")
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
   useEffect(() => {
-    localStorage.setItem("manualStats", JSON.stringify(manual))
-  }, [manual])
+    loadLocations()
+  }, [])
 
   const toggle = (id: string) =>
     setCollapsed(prev => ({ ...prev, [id]: !prev[id] }))
 
-  if (loading) return <p style={{ padding: 40 }}>Ładowanie…</p>
+  if (loading) {
+    return <p style={{ padding: 40 }}>Ładowanie…</p>
+  }
 
   return (
     <div style={{ padding: 24 }}>
-      <h1 style={{ fontSize: 22, marginBottom: 16 }}>
-        Manager wizytówek Google
-      </h1>
+      {/* ===== HEADER ===== */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 20
+        }}
+      >
+        <h1 style={{ fontSize: 22 }}>Manager wizytówek Google</h1>
 
+        <button
+          onClick={refreshAll}
+          disabled={refreshing || locations.length === 0}
+          style={{
+            padding: "8px 14px",
+            borderRadius: 8,
+            border: "1px solid #ddd",
+            background: refreshing ? "#eee" : "white",
+            cursor: refreshing ? "not-allowed" : "pointer",
+            fontSize: 13
+          }}
+        >
+          🔄 {refreshing ? "Odświeżanie…" : "Odśwież dane"}
+        </button>
+      </div>
+
+      {error && (
+        <div style={{ color: "red", marginBottom: 12 }}>{error}</div>
+      )}
+
+      {/* ===== LISTA WIZYTÓWEK ===== */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
           gap: 16
         }}
       >
         {locations.map(loc => {
           const locationId = loc.name.split("/").pop()!
-
-          const data: ManualStats = {
-            ...EMPTY_MANUAL,
-            ...(manual[locationId] ?? {}),
-            campaignReviews: {
-              ...EMPTY_MANUAL.campaignReviews,
-              ...(manual[locationId]?.campaignReviews ?? {})
-            },
-            keywordsMain:
-              manual[locationId]?.keywordsMain ?? EMPTY_MANUAL.keywordsMain,
-            keywordsSecondary:
-              manual[locationId]?.keywordsSecondary ??
-              EMPTY_MANUAL.keywordsSecondary,
-            plan: {
-              ...EMPTY_MANUAL.plan,
-              ...(manual[locationId]?.plan ?? {})
-            }
-          }
-
-          const update = (patch: Partial<ManualStats>) =>
-            setManual(prev => ({
-              ...prev,
-              [locationId]: { ...data, ...patch }
-            }))
 
           return (
             <div
@@ -146,7 +132,6 @@ export default function Dashboard() {
                 fontSize: 13
               }}
             >
-              {/* ===== HEADER ===== */}
               <div
                 onClick={() => toggle(locationId)}
                 style={{
@@ -172,196 +157,8 @@ export default function Dashboard() {
                 </span>
               </div>
 
-              {!collapsed[locationId] && (
-                <>
-                  {/* ===== LICZNIKI ===== */}
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: 8,
-                      marginTop: 10
-                    }}
-                  >
-                    <label>
-                      ❌ Usunięte negatywne
-                      <input
-                        type="number"
-                        value={data.removedNegative}
-                        onChange={e =>
-                          update({ removedNegative: +e.target.value })
-                        }
-                        style={{ width: "100%" }}
-                      />
-                    </label>
-
-                    <label>
-                      ⚠️ Obecne negatywne
-                      <input
-                        type="number"
-                        value={data.currentNegative}
-                        onChange={e =>
-                          update({ currentNegative: +e.target.value })
-                        }
-                        style={{ width: "100%" }}
-                      />
-                    </label>
-
-                    <label>
-                      💬 Dodane odpowiedzi
-                      <input
-                        type="number"
-                        value={data.repliesAdded}
-                        onChange={e =>
-                          update({ repliesAdded: +e.target.value })
-                        }
-                        style={{ width: "100%" }}
-                      />
-                    </label>
-                  </div>
-
-                  {/* ===== OPINIE ===== */}
-                  <div style={{ marginTop: 10 }}>
-                    <b>➕ Opinie z kampanii</b>
-                    {(["m0", "m1", "m2"] as const).map((k, i) => (
-                      <label key={k} style={{ display: "block", marginTop: 4 }}>
-                        {i === 0
-                          ? "Ten miesiąc"
-                          : i === 1
-                          ? "Poprzedni"
-                          : "2 m-ce temu"}
-                        <input
-                          type="number"
-                          value={data.campaignReviews[k]}
-                          onChange={e =>
-                            update({
-                              campaignReviews: {
-                                ...data.campaignReviews,
-                                [k]: +e.target.value
-                              }
-                            })
-                          }
-                          style={{ width: "100%" }}
-                        />
-                      </label>
-                    ))}
-                  </div>
-
-                  {/* ===== POZYCJONOWANE SŁOWA ===== */}
-                  <div style={{ marginTop: 10 }}>
-                    <b>🔑 Obecne pozycjonowane słowa i pozycja</b>
-
-                    {data.keywordsMain.map((k, i) => (
-                      <div
-                        key={i}
-                        style={{ display: "flex", gap: 6, marginTop: 4 }}
-                      >
-                        <input
-                          placeholder="Słowo kluczowe"
-                          value={k.keyword}
-                          onChange={e => {
-                            const next = [...data.keywordsMain]
-                            next[i] = { ...k, keyword: e.target.value }
-                            update({ keywordsMain: next })
-                          }}
-                          style={{ flex: 1 }}
-                        />
-                        <input
-                          type="number"
-                          placeholder="Poz."
-                          value={k.position}
-                          onChange={e => {
-                            const next = [...data.keywordsMain]
-                            next[i] = {
-                              ...k,
-                              position:
-                                e.target.value === "" ? "" : +e.target.value
-                            }
-                            update({ keywordsMain: next })
-                          }}
-                          style={{ width: 60 }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* ===== POZYCJA WIZYTÓWKI ===== */}
-                  <div style={{ marginTop: 10 }}>
-                    <b>📍 Obecna pozycja wizytówki</b>
-
-                    {data.keywordsSecondary.map((k, i) => (
-                      <div
-                        key={i}
-                        style={{ display: "flex", gap: 6, marginTop: 4 }}
-                      >
-                        <input
-                          placeholder="Fraza (wizytówka)"
-                          value={k.keyword}
-                          onChange={e => {
-                            const next = [...data.keywordsSecondary]
-                            next[i] = { ...k, keyword: e.target.value }
-                            update({ keywordsSecondary: next })
-                          }}
-                          style={{ flex: 1 }}
-                        />
-                        <input
-                          type="number"
-                          placeholder="Poz."
-                          value={k.position}
-                          onChange={e => {
-                            const next = [...data.keywordsSecondary]
-                            next[i] = {
-                              ...k,
-                              position:
-                                e.target.value === "" ? "" : +e.target.value
-                            }
-                            update({ keywordsSecondary: next })
-                          }}
-                          style={{ width: 60 }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* ===== PLAN ===== */}
-                  <div style={{ marginTop: 10 }}>
-                    <b>📅 Plan – następne 7 dni</b>
-                    <input
-                      type="date"
-                      value={data.plan.date}
-                      onChange={e =>
-                        update({
-                          plan: { ...data.plan, date: e.target.value }
-                        })
-                      }
-                      style={{ width: "100%", marginBottom: 4 }}
-                    />
-                    <textarea
-                      value={data.plan.text}
-                      onChange={e =>
-                        update({
-                          plan: { ...data.plan, text: e.target.value }
-                        })
-                      }
-                      rows={2}
-                      style={{ width: "100%" }}
-                    />
-                  </div>
-
-                  {/* ===== ZMIANY ===== */}
-                  <div style={{ marginTop: 10 }}>
-                    <b>🛠 Ostatnie zmiany</b>
-                    <textarea
-                      value={data.lastChanges}
-                      onChange={e =>
-                        update({ lastChanges: e.target.value })
-                      }
-                      rows={2}
-                      style={{ width: "100%" }}
-                    />
-                  </div>
-                </>
-              )}
+              {/* SNAP READY – puste celowo */}
+              {!collapsed[locationId] && null}
             </div>
           )
         })}

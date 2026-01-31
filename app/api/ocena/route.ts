@@ -8,10 +8,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Brak placeId" }, { status: 400 })
   }
 
+  // fetch do Google Places API z polem 'name'
   const url =
     `https://maps.googleapis.com/maps/api/place/details/json` +
     `?place_id=${placeId}` +
-    `&fields=rating,user_ratings_total` +
+    `&fields=name,rating,user_ratings_total` +  // <--- dodajemy 'name'
     `&key=${process.env.GOOGLE_PLACES_API_KEY}`
 
   const response = await fetch(url)
@@ -22,6 +23,7 @@ export async function GET(request: Request) {
   }
 
   return NextResponse.json({
+    name: data.result.name || "Brak nazwy",   // <--- dodajemy 'name'
     rating: data.result.rating || 0,
     totalReviews: data.result.user_ratings_total || 0
   })

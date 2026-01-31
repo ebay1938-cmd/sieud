@@ -2,7 +2,7 @@
 
 import { useSession, signIn, signOut } from "next-auth/react"
 
-export default function Home() {
+export default function LoginPage() {
   const { data: session, status } = useSession()
 
   if (status === "loading") return <p>Ładowanie...</p>
@@ -19,12 +19,8 @@ export default function Home() {
     <div>
       <p>✅ Zalogowany jako: {session.user?.email}</p>
 
-      <p>🔑 Access Token:</p>
-      <pre style={{ maxWidth: 600, overflow: "auto" }}>
-        {session.accessToken}
-      </pre>
+      <pre>{session.accessToken}</pre>
 
-      <br />
       <button onClick={() => signOut()}>
         Wyloguj
       </button>
