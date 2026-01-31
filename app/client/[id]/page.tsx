@@ -75,12 +75,13 @@ export default async function Page({
 }) {
   const { id } = await params
 
-  /* ===== SNAPSHOT DANYCH GOOGLE (PLIKI – ZOSTAJE) ===== */
-  const filePath = path.join(process.cwd(), "data", "snapshots", `${id}.json`)
-
+  /* ===== SNAPSHOT DANYCH GOOGLE (KV – KOREKTA) ===== */
   let data: FileData
+
   try {
-    data = JSON.parse(await fs.readFile(filePath, "utf-8"))
+    const fromKv = await redis.get<FileData>(`snapshot:${id}`)
+    if (!fromKv) throw new Error("no snapshot")
+    data = fromKv
   } catch {
     return <div className="p-10">❌ Brak snapshotu</div>
   }
