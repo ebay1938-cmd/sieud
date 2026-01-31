@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
-import fs from "fs/promises"
-import path from "path"
+import { Redis } from "@upstash/redis"
+
+const redis = Redis.fromEnv()
 
 function monthKey(offset: number) {
   const d = new Date()
@@ -20,7 +21,6 @@ export async function POST(req: Request) {
 
     const { m0, m1, m2, rating } = await req.json()
 
-    // ✅ Sprawdzamy, że rating ma name
     if (!m0 || !m1 || !m2 || !rating || !rating.name) {
       return NextResponse.json(
         { error: "Missing m0, m1, m2 or rating.name" },
@@ -32,25 +32,18 @@ export async function POST(req: Request) {
     const k1 = monthKey(1)
     const k2 = monthKey(2)
 
-    const dir = path.join(process.cwd(), "data", "snapshots")
-    await fs.mkdir(dir, { recursive: true })
-    const filePath = path.join(dir, `${id}.json`)
-
     const dataToSave = {
       id,
       updatedAt: new Date().toISOString(),
 
-      // 🔴 bieżący miesiąc
       stats: m0,
 
-      // 🔴 3 miesiące
       months: {
         [k0]: m0,
         [k1]: m1,
         [k2]: m2
       },
 
-      // 🔴 rating z nazwą wizytówki
       rating: {
         name: rating.name,
         rating: rating.rating,
@@ -58,7 +51,7 @@ export async function POST(req: Request) {
       }
     }
 
-    await fs.writeFile(filePath, JSON.stringify(dataToSave, null, 2), "utf-8")
+    await redis.set(`snapshot:${id}`, dataToSave)
 
     return NextResponse.json({ ok: true })
   } catch (err) {
