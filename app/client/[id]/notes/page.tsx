@@ -1,8 +1,9 @@
-import fs from "fs/promises"
-import path from "path"
+import { Redis } from "@upstash/redis"
 import { revalidatePath } from "next/cache"
 
 export const runtime = "nodejs"
+
+const redis = Redis.fromEnv()
 
 type SnapshotItem = {
   keyword: string
@@ -22,13 +23,12 @@ export default async function NotesPage({
 }) {
   const { id } = await params
 
-  const dir = path.join(process.cwd(), "data", "notes")
-  const filePath = path.join(dir, `${id}.json`)
+  const key = `note:${id}`
 
   let note: NoteData | null = null
 
   try {
-    note = JSON.parse(await fs.readFile(filePath, "utf-8"))
+    note = await redis.get<NoteData>(key)
   } catch {
     note = null
   }
@@ -43,24 +43,16 @@ export default async function NotesPage({
       change: Number(formData.get(`change_${i}`) ?? 0),
     }))
 
-    await fs.mkdir(dir, { recursive: true })
+    const data: NoteData = {
+      text,
+      snapshot,
+      updatedAt: new Date().toISOString(),
+    }
 
-    await fs.writeFile(
-      filePath,
-      JSON.stringify(
-        {
-          text,
-          snapshot,
-          updatedAt: new Date().toISOString(),
-        },
-        null,
-        2
-      ),
-      "utf-8"
-    )
+    await redis.set(key, data)
 
     revalidatePath(`/notes/${id}`)
-    revalidatePath(`/client/${id}`) // dashboard
+    revalidatePath(`/client/${id}`)
   }
 
   return (

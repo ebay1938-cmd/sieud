@@ -1,8 +1,11 @@
+import { Redis } from "@upstash/redis"
 import fs from "fs/promises"
 import path from "path"
 import ClientDashboard from "./ClientDashboard"
 
 export const revalidate = 0
+
+const redis = Redis.fromEnv()
 
 /* ======================= TYPY ======================= */
 export type Stats = {
@@ -43,6 +46,7 @@ export type NoteData = {
     keyword: string
     change: number
   }[]
+  updatedAt?: string
 }
 
 /* ======================= METRYKI ======================= */
@@ -71,7 +75,7 @@ export default async function Page({
 }) {
   const { id } = await params
 
-  /* ===== SNAPSHOT DANYCH GOOGLE ===== */
+  /* ===== SNAPSHOT DANYCH GOOGLE (PLIKI – ZOSTAJE) ===== */
   const filePath = path.join(process.cwd(), "data", "snapshots", `${id}.json`)
 
   let data: FileData
@@ -100,12 +104,11 @@ export default async function Page({
     return acc
   }, {})
 
-  /* ===== NOTATKA + SNAPSHOT POZYCJI ===== */
+  /* ===== NOTATKA + SNAPSHOT POZYCJI (REDIS) ===== */
   let note: NoteData | null = null
 
   try {
-    const notePath = path.join(process.cwd(), "data", "notes", `${id}.json`)
-    note = JSON.parse(await fs.readFile(notePath, "utf-8"))
+    note = await redis.get<NoteData>(`note:${id}`)
   } catch {
     note = null
   }
