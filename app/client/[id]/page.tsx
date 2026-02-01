@@ -1,6 +1,4 @@
 import { Redis } from "@upstash/redis"
-import fs from "fs/promises"
-import path from "path"
 import ClientDashboard from "./ClientDashboard"
 
 export const revalidate = 0
@@ -39,13 +37,26 @@ export type Metric = {
   icon: string
 }
 
-/* ===== TYP NOTATKI ===== */
+/* ===== WSPÓLNY TYP NOTATKI (PANEL 1–3) ===== */
 export type NoteData = {
   text: string
   snapshot?: {
     keyword: string
     change: number
   }[]
+  panel2?: {
+    negativeTotal: number
+    removedNegative: number
+    mediatedNegative: number
+    allReplies: number
+    seoActions: string[]
+    completedActions: number
+  }
+  panel3?: {
+    next7Days: string[]
+    actionsDone: string[]
+    effects30Days: string[]
+  }
   updatedAt?: string
 }
 
@@ -57,7 +68,7 @@ const METRICS: readonly Metric[] = [
   { key: "BUSINESS_IMPRESSIONS_DESKTOP_SEARCH", label: "Search Desktop", category: "Widoczność", icon: "🖥️" },
   { key: "BUSINESS_IMPRESSIONS_MOBILE_SEARCH", label: "Search Mobile", category: "Widoczność", icon: "📱" },
   { key: "BUSINESS_IMPRESSIONS_DESKTOP_MAPS", label: "Maps Desktop", category: "Mapy", icon: "🗺️" },
-  { key: "BUSINESS_IMPRESSIONS_MOBILE_MAPS", label: "Maps Mobile", category: "Mapy", icon: "🗺️" }
+  { key: "BUSINESS_IMPRESSIONS_MOBILE_MAPS", label: "Maps Mobile", category: "Mapy", icon: "🗺️" },
 ]
 
 /* ======================= HELPERY ======================= */
@@ -75,7 +86,7 @@ export default async function Page({
 }) {
   const { id } = await params
 
-  /* ===== SNAPSHOT DANYCH GOOGLE (KV – KOREKTA) ===== */
+  /* ===== SNAPSHOT GOOGLE ===== */
   let data: FileData
 
   try {
@@ -105,7 +116,7 @@ export default async function Page({
     return acc
   }, {})
 
-  /* ===== NOTATKA + SNAPSHOT POZYCJI (REDIS) ===== */
+  /* ===== NOTATKA / PANELE 1–3 (REDIS) ===== */
   let note: NoteData | null = null
 
   try {
