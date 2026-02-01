@@ -1,33 +1,16 @@
 import { NextResponse } from "next/server"
-import { createClient, RedisClientType } from "redis"
+import { Redis } from "@upstash/redis"
 
-let client: RedisClientType | null = null
-
-async function getRedis(): Promise<RedisClientType> {
-  if (!client) {
-    if (!process.env.REDIS_URL) {
-      throw new Error("REDIS_URL is missing")
-    }
-
-    client = createClient({
-      url: process.env.REDIS_URL
-    })
-
-    client.on("error", (err: Error) => {
-      console.error("Redis error:", err)
-    })
-
-    await client.connect()
-  }
-
-  return client
-}
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_URL!,
+  token: process.env.UPSTASH_REDIS_TOKEN!
+})
 
 function monthKey(offset: number) {
   const d = new Date()
   d.setDate(1)
   d.setMonth(d.getMonth() - offset)
-  return d.toISOString().slice(0, 7) // YYYY-MM
+  return d.toISOString().slice(0, 7)
 }
 
 export async function POST(req: Request) {
@@ -55,15 +38,12 @@ export async function POST(req: Request) {
     const dataToSave = {
       id,
       updatedAt: new Date().toISOString(),
-
       stats: m0,
-
       months: {
         [k0]: m0,
         [k1]: m1,
         [k2]: m2
       },
-
       rating: {
         name: rating.name,
         rating: rating.rating,
@@ -71,17 +51,11 @@ export async function POST(req: Request) {
       }
     }
 
-    const redis = await getRedis()
-
-    // 🔴 REALNY ZAPIS DO TEGO SAMEGO REDISA
-    await redis.set(`snapshot:${id}`, JSON.stringify(dataToSave))
+    await redis.set(`snapshot:${id}`, dataToSave)
 
     return NextResponse.json({ ok: true })
-  } catch (err: unknown) {
+  } catch (err) {
     console.error("SNAPSHOT ERROR", err)
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Server error" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Server error" }, { status: 500 })
   }
 }
