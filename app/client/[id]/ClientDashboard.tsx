@@ -126,10 +126,7 @@ export default function RestauracjaNaZamkowejPage({
   note,
 }: Props) {
   const target = nextRatingTarget(rating.rating)
-  const needed = reviewsNeededForNextPoint(
-    rating.rating,
-    rating.totalReviews
-  )
+  const needed = reviewsNeededForNextPoint(rating.rating, rating.totalReviews)
 
   /* ===== PANEL 1 – SŁOWA KLUCZOWE / NOTATKI ===== */
   const keywords: Keyword[] =
@@ -158,12 +155,12 @@ export default function RestauracjaNaZamkowejPage({
       <div className="max-w-7xl mx-auto grid gap-6 md:grid-cols-3">
         {/* PANEL 1 */}
         <section className="bg-white rounded-3xl p-6 shadow-sm space-y-6">
-          <div>
+          <div className="space-y-3">
             <h1 className="text-xl font-bold">{rating.name}</h1>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-2xl">⭐</span>
               <span className="text-2xl font-bold">{rating.rating}</span>
-              <span className="text-sm text-gray-500">– Średnia ocena</span>
+              <span className="text-sm text-gray-500">– Obecna średnia ocena</span>
             </div>
             <p className="text-sm text-gray-500 mt-1">
               Liczba opinii{" "}
@@ -184,7 +181,7 @@ export default function RestauracjaNaZamkowejPage({
             </div>
           )}
 
-          <div className="border-t pt-4 space-y-2">
+          <div className="space-y-2">
             <h3 className="font-semibold">📝 Wnioski</h3>
             <p className="text-sm">{note?.text || "Brak notatki"}</p>
           </div>
@@ -204,7 +201,7 @@ export default function RestauracjaNaZamkowejPage({
           </div>
         </section>
 
-        {/* PANEL 2 */}
+        {/* PANEL 2 – Moderacja */}
         <section className="bg-white rounded-3xl p-6 shadow-sm space-y-4">
           <h2 className="text-xl font-bold">🛡️ Moderacja opinii</h2>
           <div className="grid grid-cols-2 gap-4">
@@ -232,6 +229,21 @@ export default function RestauracjaNaZamkowejPage({
                 {moderation.allReplies}
               </p>
             </div>
+          </div>
+
+          {/* Dynamiczne cztery pola */}
+          <div className="grid grid-cols-1 gap-2 mt-4">
+            {[
+              { label: "Wykonane działania", key: "actionsDone" },
+              { label: "Obserwacje", key: "observations" },
+              { label: "Rekomendacje", key: "recommendations" },
+              { label: "Uwagi dodatkowe", key: "additionalNotes" },
+            ].map(({ label, key }) => (
+              <div key={key} className="bg-gray-50 rounded-xl p-3 text-sm text-gray-700">
+                <span className="font-medium">{label}:</span>{" "}
+                {note?.panel2?.[key as keyof typeof note.panel2] || "Brak danych"}
+              </div>
+            ))}
           </div>
         </section>
 

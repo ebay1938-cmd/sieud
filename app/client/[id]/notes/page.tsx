@@ -19,6 +19,10 @@ type Panel2Data = {
   allReplies: number
   seoActions: string[]
   completedActions: number
+  actionsDone?: string
+  observations?: string
+  recommendations?: string
+  additionalNotes?: string
 }
 
 type Panel3Data = {
@@ -72,6 +76,10 @@ export default async function NotesPage({
         .split("\n")
         .filter(Boolean),
       completedActions: Number(formData.get("completedActions") ?? 0),
+      actionsDone: String(formData.get("panel2_actionsDone") ?? ""),
+      observations: String(formData.get("panel2_observations") ?? ""),
+      recommendations: String(formData.get("panel2_recommendations") ?? ""),
+      additionalNotes: String(formData.get("panel2_additionalNotes") ?? ""),
     }
 
     const panel3: Panel3Data = {
@@ -141,13 +149,35 @@ export default async function NotesPage({
         <section className="space-y-4 border-t pt-6">
           <h2 className="font-semibold">🛡️ Panel 2 – Moderacja</h2>
 
+          {/* Liczby */}
           <div className="grid grid-cols-2 gap-4">
-            <input name="negativeTotal" defaultValue={note?.panel2?.negativeTotal ?? 0} placeholder="Negatywne" className="border rounded-xl px-3 py-2" />
-            <input name="removedNegative" defaultValue={note?.panel2?.removedNegative ?? 0} placeholder="Usunięte" className="border rounded-xl px-3 py-2" />
-            <input name="mediatedNegative" defaultValue={note?.panel2?.mediatedNegative ?? 0} placeholder="Mediacje" className="border rounded-xl px-3 py-2" />
-            <input name="allReplies" defaultValue={note?.panel2?.allReplies ?? 0} placeholder="Odpowiedzi" className="border rounded-xl px-3 py-2" />
+            <input
+              name="negativeTotal"
+              defaultValue={note?.panel2?.negativeTotal ?? 0}
+              placeholder="Negatywne"
+              className="border rounded-xl px-3 py-2"
+            />
+            <input
+              name="removedNegative"
+              defaultValue={note?.panel2?.removedNegative ?? 0}
+              placeholder="Usunięte"
+              className="border rounded-xl px-3 py-2"
+            />
+            <input
+              name="mediatedNegative"
+              defaultValue={note?.panel2?.mediatedNegative ?? 0}
+              placeholder="Mediacje"
+              className="border rounded-xl px-3 py-2"
+            />
+            <input
+              name="allReplies"
+              defaultValue={note?.panel2?.allReplies ?? 0}
+              placeholder="Odpowiedzi"
+              className="border rounded-xl px-3 py-2"
+            />
           </div>
 
+          {/* SEO działania */}
           <textarea
             name="seoActions"
             defaultValue={note?.panel2?.seoActions?.join("\n") ?? ""}
@@ -160,6 +190,32 @@ export default async function NotesPage({
             defaultValue={note?.panel2?.completedActions ?? 0}
             placeholder="Liczba wykonanych działań"
             className="border rounded-xl px-3 py-2 w-60"
+          />
+
+          {/* Dodatkowe pola Panel 2 */}
+          <textarea
+            name="panel2_actionsDone"
+            defaultValue={note?.panel2?.actionsDone ?? ""}
+            placeholder="Wykonane działania"
+            className="w-full h-16 border rounded-xl p-3 text-sm"
+          />
+          <textarea
+            name="panel2_observations"
+            defaultValue={note?.panel2?.observations ?? ""}
+            placeholder="Obserwacje"
+            className="w-full h-16 border rounded-xl p-3 text-sm"
+          />
+          <textarea
+            name="panel2_recommendations"
+            defaultValue={note?.panel2?.recommendations ?? ""}
+            placeholder="Rekomendacje"
+            className="w-full h-16 border rounded-xl p-3 text-sm"
+          />
+          <textarea
+            name="panel2_additionalNotes"
+            defaultValue={note?.panel2?.additionalNotes ?? ""}
+            placeholder="Uwagi dodatkowe"
+            className="w-full h-16 border rounded-xl p-3 text-sm"
           />
         </section>
 
