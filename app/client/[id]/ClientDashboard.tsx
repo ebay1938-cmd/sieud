@@ -1,4 +1,4 @@
-/* app/restauracja-na-zamkowej/page.tsx */
+
 
 import type { Stats, Rating, Metric, NoteData } from "./page"
 

@@ -60,7 +60,8 @@ export default function DashboardPage() {
 
   const placeMap: Record<string, string> = {
     "10012915044509976414": "ChIJCfr1yDEfHUcRAKwDD4cyKhM",
-    "12970499091355352474": "ChIJg22D8rotPUcROTEokbhvYWw"
+    "12970499091355352474": "ChIJg22D8rotPUcROTEokbhvYWw",
+    "6734644573098406720": "ChIJzcBY_fx1_UYRR60g03HIY_w"
   }
 
   useEffect(() => {
