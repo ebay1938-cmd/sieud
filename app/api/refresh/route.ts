@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server"
-import { Redis } from "@upstash/redis"
+import { kv } from "@vercel/kv"
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_URL!,
-  token: process.env.UPSTASH_REDIS_TOKEN!
-})
-
+/**
+ * YYYY-MM key for current / previous months
+ */
 function monthKey(offset: number) {
   const d = new Date()
   d.setDate(1)
@@ -19,12 +17,15 @@ export async function POST(req: Request) {
     const id = searchParams.get("id")
 
     if (!id) {
-      return NextResponse.json({ error: "Missing id" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Missing id" },
+        { status: 400 }
+      )
     }
 
     const { m0, m1, m2, rating } = await req.json()
 
-    if (!m0 || !m1 || !m2 || !rating || !rating.name) {
+    if (!m0 || !m1 || !m2 || !rating?.name) {
       return NextResponse.json(
         { error: "Missing m0, m1, m2 or rating.name" },
         { status: 400 }
@@ -38,12 +39,15 @@ export async function POST(req: Request) {
     const dataToSave = {
       id,
       updatedAt: new Date().toISOString(),
+
       stats: m0,
+
       months: {
         [k0]: m0,
         [k1]: m1,
         [k2]: m2
       },
+
       rating: {
         name: rating.name,
         rating: rating.rating,
@@ -51,11 +55,15 @@ export async function POST(req: Request) {
       }
     }
 
-    await redis.set(`snapshot:${id}`, dataToSave)
+    // ✅ ZAPIS DO VERCEL KV (działa lokalnie i online)
+    await kv.set(`snapshot:${id}`, dataToSave)
 
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error("SNAPSHOT ERROR", err)
-    return NextResponse.json({ error: "Server error" }, { status: 500 })
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Server error" },
+      { status: 500 }
+    )
   }
 }

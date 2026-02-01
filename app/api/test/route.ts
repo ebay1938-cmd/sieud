@@ -1,51 +1,36 @@
-import { createClient, RedisClientType } from "redis"
+import { kv } from "@vercel/kv"
 
-let client: RedisClientType | null = null
-
-async function getRedis(): Promise<RedisClientType> {
-  if (!client) {
-    if (!process.env.REDIS_URL) {
-      throw new Error("REDIS_URL is missing")
-    }
-
-    client = createClient({
-      url: process.env.REDIS_URL
-    })
-
-    client.on("error", (err: Error) => {
-      console.error("Redis error:", err)
-    })
-
-    await client.connect()
-  }
-
-  return client
-}
-
+/**
+ * GET /api/snapshots
+ * Lista snapshotów + ich rozmiary
+ */
 export async function GET() {
   try {
-    const redis = await getRedis()
-
-    const keys: string[] = await redis.keys("snapshot:*")
+    const keys = await kv.keys("snapshot:*")
 
     const snapshots = await Promise.all(
-      keys.map(async (key: string) => {
-        const value: string | null = await redis.get(key)
+      keys.map(async (key) => {
+        const value = await kv.get(key)
+
+        const json = value ? JSON.stringify(value) : ""
+        const size_bytes = new TextEncoder().encode(json).length
 
         return {
           key,
-          size_bytes: value ? Buffer.byteLength(value, "utf8") : 0
+          size_bytes
         }
       })
     )
 
     return Response.json({
       ok: true,
-      redis_connected: true,
-      snapshot_count: keys.length,
+      kv_connected: true,
+      snapshot_count: snapshots.length,
       snapshots
     })
-  } catch (err: unknown) {
+  } catch (err) {
+    console.error("KV SNAPSHOT LIST ERROR", err)
+
     return Response.json(
       {
         ok: false,
