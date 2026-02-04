@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server"
 import { kv } from "@vercel/kv"
 
-/**
- * YYYY-MM key for current / previous months
- */
 function monthKey(offset: number) {
   const d = new Date()
   d.setDate(1)
@@ -22,45 +19,37 @@ export async function POST(req: Request) {
 
     const { m0, m1, m2, rating } = await req.json()
 
-    if (!m0 || !m1 || !m2 || !rating?.name) {
-      return NextResponse.json(
-        { error: "Missing m0, m1, m2 or rating.name" },
-        { status: 400 }
-      )
+    // ❗ tylko dane statystyczne są wymagane
+    if (!m0 || !m1 || !m2) {
+      return NextResponse.json({ error: "Missing stats" }, { status: 400 })
+    }
+
+    const safeRating = {
+      name: rating?.name ?? "Brak nazwy",
+      rating: rating?.rating ?? 0,
+      totalReviews: rating?.totalReviews ?? 0
     }
 
     const k0 = monthKey(0)
     const k1 = monthKey(1)
     const k2 = monthKey(2)
 
-    // 🔹 Pobierz istniejący snapshot z KV (jeśli jest)
     const prev = await kv.get<any>(`snapshot:${id}`)
 
-    // 🔹 Połącz stare miesiące z nowymi
     const months = {
-      ...prev?.months, // zachowaj wszystkie stare miesiące
+      ...prev?.months,
       [k0]: m0,
       [k1]: m1,
       [k2]: m2
     }
 
-    const dataToSave = {
+    await kv.set(`snapshot:${id}`, {
       id,
       updatedAt: new Date().toISOString(),
-
       stats: m0,
-
-      months, // tutaj merge
-
-      rating: {
-        name: rating.name,
-        rating: rating.rating,
-        totalReviews: rating.totalReviews
-      }
-    }
-
-    // ✅ Zapis do Vercel KV
-    await kv.set(`snapshot:${id}`, dataToSave)
+      months,
+      rating: safeRating
+    })
 
     return NextResponse.json({ ok: true })
   } catch (err) {
