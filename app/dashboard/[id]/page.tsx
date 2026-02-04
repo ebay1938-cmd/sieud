@@ -14,7 +14,7 @@ type Stats = {
 }
 
 type Rating = {
-  name: string        // <- dodane pole name
+  name: string
   rating: number
   totalReviews: number
 }
@@ -64,53 +64,71 @@ export default function DashboardPage() {
     "6734644573098406720": "ChIJzcBY_fx1_UYRR60g03HIY_w"
   }
 
+  /* ======================= FETCH DANYCH ======================= */
   useEffect(() => {
     if (!id) return
 
-    // fetch statystyk
-    fetch(`/api/statystyki?id=${id}&mode=month&offset=0`)
-      .then(r => r.json())
-      .then(d => setM0(d.result))
+    setSaved(false) // reset po zmianie id
 
-    fetch(`/api/statystyki?id=${id}&mode=month&offset=1`)
-      .then(r => r.json())
-      .then(d => setM1(d.result))
+    const fetchStats = async () => {
+      try {
+        const res0 = await fetch(`/api/statystyki?id=${id}&mode=month&offset=0`)
+        const data0 = await res0.json()
+        setM0(data0.result)
 
-    fetch(`/api/statystyki?id=${id}&mode=month&offset=2`)
-      .then(r => r.json())
-      .then(d => setM2(d.result))
+        const res1 = await fetch(`/api/statystyki?id=${id}&mode=month&offset=1`)
+        const data1 = await res1.json()
+        setM1(data1.result)
 
-    // fetch oceny i nazwy wizytówki
-    const placeId = placeMap[id]
-    if (placeId) {
-      fetch(`/api/ocena?placeId=${placeId}`)
-        .then(r => r.json())
-        .then(setRatingData)
+        const res2 = await fetch(`/api/statystyki?id=${id}&mode=month&offset=2`)
+        const data2 = await res2.json()
+        setM2(data2.result)
+
+        const placeId = placeMap[id]
+        if (placeId) {
+          const resRating = await fetch(`/api/ocena?placeId=${placeId}`)
+          const ratingJson = await resRating.json()
+          setRatingData(ratingJson)
+        }
+      } catch (err) {
+        console.error("Fetch error:", err)
+      }
     }
+
+    fetchStats()
   }, [id])
 
-  /* ===== SNAPSHOT ===== */
+  /* ======================= SNAPSHOT ======================= */
   const saveSnapshot = async () => {
-    if (!id || !m0 || !m1 || !m2 || !ratingData) return
+    if (!id || !m0 || !m1 || !m2 || !ratingData) {
+      console.warn("Snapshot not executed: data missing", { id, m0, m1, m2, ratingData })
+      return
+    }
 
     setSaving(true)
     setSaved(false)
 
-    await fetch(`/api/refresh?id=${id}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        m0,
-        m1,
-        m2,
-        rating: ratingData
+    try {
+      const res = await fetch(`/api/refresh?id=${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ m0, m1, m2, rating: ratingData })
       })
-    })
 
-    setSaving(false)
-    setSaved(true)
+      const data = await res.json()
+      if (!res.ok) {
+        console.error("Snapshot failed:", data)
+      } else {
+        setSaved(true)
+      }
+    } catch (err) {
+      console.error("Snapshot fetch error:", err)
+    } finally {
+      setSaving(false)
+    }
   }
 
+  /* ======================= GRUPOWANIE METRYK ======================= */
   const grouped = useMemo(() => {
     const out: Record<string, Metric[]> = {}
     METRICS.forEach(m => {
@@ -120,6 +138,7 @@ export default function DashboardPage() {
     return out
   }, [])
 
+  /* ======================= RENDER ======================= */
   if (!m0 || !m1 || !m2 || !ratingData) {
     return <div className="p-8">Ładowanie danych…</div>
   }
@@ -130,12 +149,12 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-slate-100 p-6 md:p-10">
       <div className="max-w-[1400px] mx-auto space-y-10">
 
-        {/* Nagłówek z nazwą wizytówki */}
+        {/* Nagłówek */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">{name}</h1>
           <button
             onClick={saveSnapshot}
-            disabled={saving}
+            disabled={saving || !m0 || !m1 || !m2 || !ratingData} // <- blokada przy braku danych
             className="px-4 py-2 rounded-xl bg-black text-white text-sm"
           >
             {saving ? "Zapisywanie…" : "🔄 Zapisz snapshot"}
@@ -161,7 +180,6 @@ export default function DashboardPage() {
         {Object.entries(grouped).map(([cat, metrics]) => (
           <section key={cat} className="space-y-4">
             <h2 className="text-xl font-semibold">{cat}</h2>
-
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {metrics.map(m => {
                 const v0 = m0[m.key]
@@ -174,7 +192,6 @@ export default function DashboardPage() {
                       <span>{m.icon} {m.label}</span>
                       <b>{v0}</b>
                     </div>
-
                     <div className="grid grid-cols-3 text-xs text-gray-600">
                       <div>{monthLabel(2)}<br /><b>{v2}</b></div>
                       <div>{monthLabel(1)}<br /><b>{v1}</b></div>
