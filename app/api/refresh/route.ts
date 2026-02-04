@@ -17,10 +17,7 @@ export async function POST(req: Request) {
     const id = searchParams.get("id")
 
     if (!id) {
-      return NextResponse.json(
-        { error: "Missing id" },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: "Missing id" }, { status: 400 })
     }
 
     const { m0, m1, m2, rating } = await req.json()
@@ -36,17 +33,24 @@ export async function POST(req: Request) {
     const k1 = monthKey(1)
     const k2 = monthKey(2)
 
+    // 🔹 Pobierz istniejący snapshot z KV (jeśli jest)
+    const prev = await kv.get<any>(`snapshot:${id}`)
+
+    // 🔹 Połącz stare miesiące z nowymi
+    const months = {
+      ...prev?.months, // zachowaj wszystkie stare miesiące
+      [k0]: m0,
+      [k1]: m1,
+      [k2]: m2
+    }
+
     const dataToSave = {
       id,
       updatedAt: new Date().toISOString(),
 
       stats: m0,
 
-      months: {
-        [k0]: m0,
-        [k1]: m1,
-        [k2]: m2
-      },
+      months, // tutaj merge
 
       rating: {
         name: rating.name,
@@ -55,7 +59,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // ✅ ZAPIS DO VERCEL KV (działa lokalnie i online)
+    // ✅ Zapis do Vercel KV
     await kv.set(`snapshot:${id}`, dataToSave)
 
     return NextResponse.json({ ok: true })
