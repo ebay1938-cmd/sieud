@@ -7,6 +7,37 @@ import KeywordCheck from "@/components/KeywordCheck"
 import ResultView from "@/components/ResultView"
 
 export default function HomePage() {
+  // ✅ Jeśli produkcja (np. Vercel) – pokaż komunikat
+  if (process.env.NODE_ENV === "production") {
+    return (
+      <main
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          background: "#f5f6f8",
+        }}
+      >
+        <div
+          style={{
+            background: "#fff",
+            padding: "40px",
+            borderRadius: "12px",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+            textAlign: "center",
+          }}
+        >
+          <h1>Cześć! 👋</h1>
+          <p style={{ marginTop: "10px", fontSize: "18px" }}>
+            Zapraszamy do Twojego panelu klienta.
+          </p>
+        </div>
+      </main>
+    )
+  }
+
+  // ✅ Localhost – normalna aplikacja
   const [businesses, setBusinesses] = useState<any[]>([])
   const [selectedBusiness, setSelectedBusiness] = useState<any>(null)
 
@@ -48,31 +79,27 @@ export default function HomePage() {
           📍 Local SEO – mapa wizytówki
         </h1>
 
-        {/* 🗺️ MAPA */}
         <ResultView
           business={selectedBusiness}
           positions={positions || undefined}
           keywords={keywords || undefined}
         />
 
-        {/* 🔎 WYSZUKIWANIE */}
         <section style={{ marginBottom: "16px", marginTop: "20px" }}>
           <BusinessSearch
             onResults={(list: any[]) => {
               setBusinesses(list)
               setPositions(null)
               setKeywords(null)
-              // ❌ NIE resetujemy selectedBusiness tutaj
             }}
             onSelect={(b: any) => {
-              setSelectedBusiness(b) // ✅ 1 KLIK = WYBÓR
+              setSelectedBusiness(b)
               setPositions(null)
               setKeywords(null)
             }}
           />
         </section>
 
-        {/* 📋 LISTA */}
         {businesses.length > 0 && (
           <section style={{ marginBottom: "20px" }}>
             <BusinessList
@@ -92,7 +119,6 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* 🔑 ANALIZA */}
         {selectedBusiness && (
           <div ref={keywordRef}>
             <KeywordCheck
