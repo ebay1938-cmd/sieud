@@ -19,15 +19,20 @@ export async function POST(req: Request) {
 
     const { m0, m1, m2, rating } = await req.json()
 
-    // ❗ tylko dane statystyczne są wymagane
     if (!m0 || !m1 || !m2) {
       return NextResponse.json({ error: "Missing stats" }, { status: 400 })
     }
 
-    const safeRating = {
-      name: rating?.name ?? "Brak nazwy",
-      rating: rating?.rating ?? 0,
-      totalReviews: rating?.totalReviews ?? 0
+    // ❗❗❗ KLUCZOWE
+    if (
+      !rating ||
+      typeof rating.rating !== "number" ||
+      rating.rating <= 0
+    ) {
+      return NextResponse.json(
+        { error: "Rating not ready – snapshot aborted" },
+        { status: 409 }
+      )
     }
 
     const k0 = monthKey(0)
@@ -48,14 +53,18 @@ export async function POST(req: Request) {
       updatedAt: new Date().toISOString(),
       stats: m0,
       months,
-      rating: safeRating
+      rating: {
+        name: rating.name,
+        rating: rating.rating,
+        totalReviews: rating.totalReviews
+      }
     })
 
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error("SNAPSHOT ERROR", err)
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Server error" },
+      { error: "Server error" },
       { status: 500 }
     )
   }
