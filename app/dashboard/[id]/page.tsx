@@ -1,4 +1,5 @@
 "use client"
+
 import { useEffect, useMemo, useState } from "react"
 import { useParams } from "next/navigation"
 
@@ -50,7 +51,6 @@ function monthLabel(offset: number) {
 /* ======================= PAGE ======================= */
 export default function DashboardPage() {
   const { id } = useParams<{ id: string }>()
-
   const [m0, setM0] = useState<Stats | null>(null)
   const [m1, setM1] = useState<Stats | null>(null)
   const [m2, setM2] = useState<Stats | null>(null)
@@ -64,68 +64,69 @@ export default function DashboardPage() {
     "6734644573098406720": "ChIJzcBY_fx1_UYRR60g03HIY_w",
     "14323851675795876224": "ChIJzWubR9q1EEcR4MYZndUkXHw",
     "18096802055291956906": "ChIJObhgu_HDD0cRVU1iSl5POcs",
-    "831050986796154442": "ChIJu5zmfl_nDkcRIQW2nBZP8oM",
+    "831050986154442": "ChIJu5zmfl_nDkcRIQW2nBZP8oM",
   }
 
   /* ======================= FETCH DANYCH ======================= */
   useEffect(() => {
     if (!id) return
+    setSaved(false)
 
-    setSaved(false) // reset po zmianie id
-
-    const fetchStats = async () => {
+    const fetchData = async () => {
       try {
-        const res0 = await fetch(`/api/statystyki?id=${id}&mode=month&offset=0`)
-        const data0 = await res0.json()
+        // Statystyki miesięczne
+        const [res0, res1, res2] = await Promise.all([
+          fetch(`/api/statystyki?id=${id}&mode=month&offset=0`),
+          fetch(`/api/statystyki?id=${id}&mode=month&offset=1`),
+          fetch(`/api/statystyki?id=${id}&mode=month&offset=2`)
+        ])
+        const [data0, data1, data2] = await Promise.all([
+          res0.json(),
+          res1.json(),
+          res2.json()
+        ])
         setM0(data0.result)
-
-        const res1 = await fetch(`/api/statystyki?id=${id}&mode=month&offset=1`)
-        const data1 = await res1.json()
         setM1(data1.result)
-
-        const res2 = await fetch(`/api/statystyki?id=${id}&mode=month&offset=2`)
-        const data2 = await res2.json()
         setM2(data2.result)
 
+        // ✅ Live rating zawsze online
         const placeId = placeMap[id]
         if (placeId) {
-          const resRating = await fetch(`/api/ocena?placeId=${placeId}`)
+          const resRating = await fetch(`/api/ocena?placeId=${placeId}`, { cache: "no-store" })
+          if (!resRating.ok) throw new Error("Fetch rating failed")
           const ratingJson = await resRating.json()
-          setRatingData(ratingJson)
+          setRatingData({
+            name: ratingJson.name ?? "Brak nazwy",
+            rating: ratingJson.rating ?? 0,
+            totalReviews: ratingJson.totalReviews ?? 0
+          })
         }
       } catch (err) {
         console.error("Fetch error:", err)
+        setRatingData({ name: "Brak nazwy", rating: 0, totalReviews: 0 }) // fallback
       }
     }
 
-    fetchStats()
+    fetchData()
   }, [id])
 
   /* ======================= SNAPSHOT ======================= */
   const saveSnapshot = async () => {
-    if (!id || !m0 || !m1 || !m2 || !ratingData) {
-      console.warn("Snapshot not executed: data missing", { id, m0, m1, m2, ratingData })
-      return
-    }
+    if (!id || !m0 || !m1 || !m2 || !ratingData) return
 
     setSaving(true)
     setSaved(false)
-
     try {
       const res = await fetch(`/api/refresh?id=${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ m0, m1, m2, rating: ratingData })
       })
-
       const data = await res.json()
-      if (!res.ok) {
-        console.error("Snapshot failed:", data)
-      } else {
-        setSaved(true)
-      }
+      if (res.ok) setSaved(true)
+      else console.error("Snapshot failed:", data)
     } catch (err) {
-      console.error("Snapshot fetch error:", err)
+      console.error(err)
     } finally {
       setSaving(false)
     }
@@ -142,33 +143,24 @@ export default function DashboardPage() {
   }, [])
 
   /* ======================= RENDER ======================= */
-  if (!m0 || !m1 || !m2 || !ratingData) {
-    return <div className="p-8">Ładowanie danych…</div>
-  }
+  if (!m0 || !m1 || !m2 || !ratingData) return <div className="p-8">Ładowanie danych…</div>
 
   const { name, rating, totalReviews } = ratingData
 
   return (
     <div className="min-h-screen bg-slate-100 p-6 md:p-10">
       <div className="max-w-[1400px] mx-auto space-y-10">
-
         {/* Nagłówek */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">{name}</h1>
           <button
             onClick={saveSnapshot}
-            disabled={saving || !m0 || !m1 || !m2 || !ratingData} // <- blokada przy braku danych
+            disabled={saving}
             className="px-4 py-2 rounded-xl bg-black text-white text-sm"
           >
             {saving ? "Zapisywanie…" : "🔄 Zapisz snapshot"}
           </button>
         </div>
-
-        {saved && (
-          <div className="text-green-600 text-sm">
-            ✅ Snapshot zapisany
-          </div>
-        )}
 
         {/* Średnia ocena */}
         <section className="bg-white rounded-2xl p-6 shadow max-w-md">
@@ -188,7 +180,6 @@ export default function DashboardPage() {
                 const v0 = m0[m.key]
                 const v1 = m1[m.key]
                 const v2 = m2[m.key]
-
                 return (
                   <div key={m.key} className="bg-white rounded-2xl p-5 shadow">
                     <div className="flex justify-between text-sm mb-2">
@@ -206,7 +197,6 @@ export default function DashboardPage() {
             </div>
           </section>
         ))}
-
       </div>
     </div>
   )
