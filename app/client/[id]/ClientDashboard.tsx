@@ -177,7 +177,7 @@ export default function RestauracjaNaZamkowejPage({
           )}
 
           <div className="space-y-2">
-            <h3 className="font-semibold">📝 Wnioski</h3>
+            <h3 className="font-semibold">Obserwuj! Kampania kończy się:</h3>
             <p className="text-sm">{note?.text || "Brak notatki"}</p>
           </div>
 
