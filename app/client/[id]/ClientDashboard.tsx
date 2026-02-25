@@ -40,17 +40,12 @@ function getDelta(current: number, previous: number) {
 }
 
 function TrendBadge({ diff, pct }: { diff: number; pct: number | null }) {
-  const positive = diff >= 0
+  if (diff <= 0) return null
+
   return (
-    <div
-      className={`text-xs font-semibold px-2 py-1 rounded-full ${
-        positive
-          ? "bg-emerald-100 text-emerald-700"
-          : "bg-rose-100 text-rose-700"
-      }`}
-    >
-      {positive ? "▲" : "▼"} {Math.abs(diff)}
-      {pct !== null && ` (${Math.abs(pct)}%)`}
+    <div className="text-xs font-semibold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">
+      ▲ {diff}
+      {pct !== null && ` (${pct}%)`}
     </div>
   )
 }
@@ -186,20 +181,20 @@ export default function RestauracjaNaZamkowejPage({
             <p className="text-sm">{note?.text || "Brak notatki"}</p>
           </div>
 
-          <div className="space-y-2">
-            <h3 className="font-semibold">📌 Słowa kluczowe</h3>
-            {keywords.length ? (
-              keywords.map((k, i) => (
-                <div key={i} className="flex justify-between items-center">
-                  <span className="text-sm font-medium">{k.phrase}</span>
-                  <TrendBadge diff={k.delta} pct={null} />
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-gray-400">Brak snapshotu pozycji</p>
-            )}
-          </div>
-        </section>
+<div className="space-y-2">
+  <h3 className="font-semibold">📌 Słowa kluczowe</h3>
+  {keywords.length ? (
+    keywords.map((k, i) => (
+      <div key={i} className="flex justify-between items-center">
+        <span className="text-sm">{k.phrase}</span>
+        <TrendBadge diff={k.delta} pct={null} />
+      </div>
+    ))
+  ) : (
+    <p className="text-sm text-gray-400">Brak snapshotu pozycji</p>
+  )}
+</div>
+</section>
 
         {/* PANEL 2 – Moderacja */}
         <section className="bg-white rounded-3xl p-6 shadow-sm space-y-4">
