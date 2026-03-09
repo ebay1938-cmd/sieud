@@ -71,6 +71,9 @@ export default function DashboardPage() {
     "2140011059350205854": "ChIJWY1CI0rCF0cR35rsWklu9Vs",
     "4870104000413231055": "ChIJFYhVrqjNHkcRym5ZHoUWp7k",
     "17145178164553863214": "ChIJkcA_EjbpD0cRH6fPDXE2J6o",
+    "11587533495326963056": "ChIJ-Qr_EZM0GkcR1ek3HOp6tTA",
+    "5339713625877468072": "ChIJ6TRYQ8x1_UYRvmewRMJlFsA",
+    "7200295779632273992": "ChIJ8yIfOjR1_UYRVVlreZePYxQ",
   }
 
   /* ======================= FETCH DANYCH ======================= */
